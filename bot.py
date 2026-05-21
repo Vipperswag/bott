@@ -992,7 +992,7 @@ async def top_tracks(message: Message, state: FSMContext):
                     await state.clear()
                     return
 
-                artist_id = search_data[0].get("artistId")
+                artist_id = search_data["results"][0].get("artistId")
                 artist_name = results[0].get("artistName")
 
                 # 2. Делаем LOOKUP запрос по ID артиста для получения ТОП треков
