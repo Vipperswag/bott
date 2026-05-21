@@ -952,9 +952,8 @@ async def find_similar(message: Message, state: FSMContext):
     await ask_for_rating(message, user_id, "quick_search")
     await state.clear()
 
-
 async def top_tracks(message: Message, state: FSMContext):
-    """Поиск топ-треков артиста (из bot2.py)"""
+    """Поиск топ-треков артиста"""
     user_id = message.from_user.id
     
     # Проверка попыток
@@ -975,10 +974,12 @@ async def top_tracks(message: Message, state: FSMContext):
     db.log_attempt(user_id, is_free_attempt)
     db.increment_user_stat(user_id, 'quick_searches')
     
+    search_query = message.text.strip()
+    
     # 1. Сначала находим ID артиста
     search_url = "https://itunes.apple.com/search"
     search_params = {
-        "term": message.text,
+        "term": search_query,
         "entity": "musicArtist",
         "limit": 1
     }
@@ -986,14 +987,20 @@ async def top_tracks(message: Message, state: FSMContext):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(search_url, params=search_params) as resp:
+                if resp.status != 200:
+                    await message.answer("❌ Ошибка соединения с Apple Music. Попробуй позже.")
+                    await state.clear()
+                    return
+                    
                 search_data = await resp.json(content_type=None)
                 if not search_data or not search_data.get("results"):
-                    await message.answer("❌ Артист не найден.")
+                    await message.answer("❌ Артист не найден в Apple Music.")
                     await state.clear()
                     return
 
-                artist_id = search_data["results"][0].get("artistId")
-                artist_name = results[0].get("artistName")
+                results_list = search_data["results"]
+                artist_id = results_list[0].get("artistId")
+                artist_name = results_list[0].get("artistName")
 
                 # 2. Делаем LOOKUP запрос по ID артиста для получения ТОП треков
                 lookup_url = "https://itunes.apple.com/lookup"
@@ -1005,12 +1012,17 @@ async def top_tracks(message: Message, state: FSMContext):
                 }
                 
                 async with session.get(lookup_url, params=lookup_params) as lookup_resp:
+                    if lookup_resp.status != 200:
+                        await message.answer("❌ Ошибка получения треков. Попробуй позже.")
+                        await state.clear()
+                        return
+                        
                     lookup_data = await lookup_resp.json(content_type=None)
                     all_results = lookup_data.get("results", [])
                     track_results = [item for item in all_results if item.get("wrapperType") == "track"]
 
         if not track_results:
-            await message.answer(f"Не удалось найти топ-треки в карточке {artist_name}.")
+            await message.answer(f"❌ Не удалось найти топ-треки для {artist_name}.")
             await state.clear()
             return
 
@@ -1042,9 +1054,8 @@ async def top_tracks(message: Message, state: FSMContext):
 
     except Exception as e:
         logging.error(f"Ошибка при поиске топ-треков: {e}")
-        await message.answer("Произошла ошибка при обращении к Apple Music.")
+        await message.answer("❌ Произошла ошибка при обращении к Apple Music. Попробуй позже.")
         await state.clear()
-
 
 async def genre_search(message: Message, state: FSMContext):
     """Поиск по жанру (из bot2.py)"""
