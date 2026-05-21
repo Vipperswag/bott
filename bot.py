@@ -3198,10 +3198,11 @@ async def back_to_main_handler(callback_query: CallbackQuery):
 
 # --- ЗАПУСК БОТА ---
 async def main():
-    print("🚀 Запуск музыкального бота (Apple Music + GigaChat AI)...")
-    print("="*60)
 
     await bot.delete_webhook(drop_pending_updates=True)
+
+    print("🚀 Запуск музыкального бота (Apple Music + GigaChat AI)...")
+    print("="*60)
     
     print("✅ Apple Music API подключен")
     print("✅ GigaChat AI API подключен")
