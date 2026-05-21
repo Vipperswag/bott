@@ -29,7 +29,7 @@ ssl_context.verify_mode = ssl.CERT_NONE
 # Используем этот контекст для всех запросов
 aiohttp.TCPConnector.ssl_context = ssl_context
 
-API_TOKEN = "8318083780:AAEPyyhvsAkd1sZa3iPPZi6CCFZNgbIcmtI"
+API_TOKEN = "8318083780:AAGhwYeYCvT9axaBS5sY0_KSp_XmY2H9HrY"
 GIGACHAT_CLIENT_ID = "019b47f6-b51f-7b47-aa6f-bfddd1f46389"  # Твой Client ID
 GIGACHAT_CLIENT_SECRET = "MDE5YjQ3ZjYtYjUxZi03YjQ3LWFhNmYtYmZkZGQxZjQ2Mzg5OmVmNTQxODI2LTcyNzgtNGFiZS1hMzgyLTRkMWYwOTA0YjI2Yg=="
 GIGACHAT_TOKEN_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
