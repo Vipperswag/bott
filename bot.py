@@ -21,14 +21,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 import ssl
 
-# Создаем SSL-контекст, который игнорирует ошибки сертификатов
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
-
-# Используем этот контекст для всех запросов
-aiohttp.TCPConnector.ssl_context = ssl_context
-
 API_TOKEN = "8318083780:AAGhwYeYCvT9axaBS5sY0_KSp_XmY2H9HrY"
 GIGACHAT_CLIENT_ID = "019b47f6-b51f-7b47-aa6f-bfddd1f46389"  # Твой Client ID
 GIGACHAT_CLIENT_SECRET = "MDE5YjQ3ZjYtYjUxZi03YjQ3LWFhNmYtYmZkZGQxZjQ2Mzg5OmVmNTQxODI2LTcyNzgtNGFiZS1hMzgyLTRkMWYwOTA0YjI2Yg=="
@@ -60,7 +52,7 @@ async def call_apple(params):
     url = "https://itunes.apple.com/search"
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get(url, params=params, timeout=10) as resp:
+            async with session.get(url, params=params, timeout=10, ssl=False) as resp:
                 if resp.status != 200:
                     print(f"⚠️ Apple API вернул статус {resp.status}")
                     return []
@@ -3208,6 +3200,8 @@ async def back_to_main_handler(callback_query: CallbackQuery):
 async def main():
     print("🚀 Запуск музыкального бота (Apple Music + GigaChat AI)...")
     print("="*60)
+
+    await bot.delete_webhook(drop_pending_updates=True)
     
     print("✅ Apple Music API подключен")
     print("✅ GigaChat AI API подключен")
