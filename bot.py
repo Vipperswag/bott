@@ -3211,6 +3211,7 @@ async def back_to_main_handler(callback_query: CallbackQuery):
 async def main():
 
     await bot.delete_webhook(drop_pending_updates=True)
+    print("✅ Вебхук удалён")
 
     print("🚀 Запуск музыкального бота (Apple Music + GigaChat AI)...")
     print("="*60)
