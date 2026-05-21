@@ -21,7 +21,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 import ssl
 
-API_TOKEN = "8996619984:AAGontioMNDTW0L0NVr_5Gf_w922VTnzLKw"
+API_TOKEN = "8318083780:AAGhwYeYCvT9axaBS5sY0_KSp_XmY2H9HrY"
 GIGACHAT_CLIENT_ID = "019b47f6-b51f-7b47-aa6f-bfddd1f46389"  # Твой Client ID
 GIGACHAT_CLIENT_SECRET = "MDE5YjQ3ZjYtYjUxZi03YjQ3LWFhNmYtYmZkZGQxZjQ2Mzg5OmVmNTQxODI2LTcyNzgtNGFiZS1hMzgyLTRkMWYwOTA0YjI2Yg=="
 GIGACHAT_TOKEN_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
