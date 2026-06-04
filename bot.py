@@ -837,9 +837,10 @@ async def get_track_recommendation_with_reason(artist: str, track: str, user_ans
 
 # --- ФУНКЦИИ ПОИСКА ---
 async def find_similar(message: Message, state: FSMContext):
-    """Поиск похожих артистов (через Apple Music API, без парсинга)"""
+    """Поиск похожих артистов (из bot2.py)"""
     user_id = message.from_user.id
     
+    # Проверка попыток
     attempts = db.get_user_attempts(user_id)
     is_premium_active = False
     if attempts['premium_until']:
@@ -852,81 +853,105 @@ async def find_similar(message: Message, state: FSMContext):
         await state.clear()
         return
     
+    # Списать попытку
     is_free_attempt = attempts['free_attempts'] > 0
     db.log_attempt(user_id, is_free_attempt)
     db.increment_user_stat(user_id, 'quick_searches')
     
     search_query = message.text.strip()
-    status_msg = await message.answer(f"⏳ Ищем похожих артистов для <b>{html.escape(search_query)}</b>...", parse_mode="HTML")
-    
-    # 1. Получаем ID артиста
+    status_msg = await message.answer(f"⏳ Парсю страницу похожих для <b>{html.escape(search_query)}</b>...", parse_mode="HTML")
+
+    # Шаг 1: Получаем ID и точное имя для формирования ссылки
     search_res = await call_apple({"term": search_query, "entity": "musicArtist", "limit": 1})
     if not search_res:
-        await status_msg.edit_text("❌ Артист не найден в Apple Music.")
+        await status_msg.edit_text("❌ Артист не найден.")
         await state.clear()
         return
-    
+
     artist_id = search_res[0].get("artistId")
     artist_name = search_res[0].get("artistName")
     
-    # 2. Получаем топ-треки артиста
-    tracks = await call_apple({"id": artist_id, "entity": "song", "limit": 25})
-    
-    # 3. Собираем уникальных исполнителей из треков (коллаборации)
-    similar = []
-    seen = set()
-    
-    for track in tracks:
-        feat_artist = track.get("artistName", "")
-        if feat_artist.lower() == artist_name.lower():
-            continue
-        if feat_artist.lower() in seen:
-            continue
-        seen.add(feat_artist.lower())
-        similar.append({
-            "name": feat_artist,
-            "url": f"https://music.apple.com/search?term={urllib.parse.quote(feat_artist)}"
-        })
-        if len(similar) >= 10:
-            break
-    
-    # 4. Если не хватает — добиваем популярными из того же жанра
-    if len(similar) < 5:
-        genre = search_res[0].get("primaryGenreName", "pop")
-        genre_artists = await call_apple({"term": genre, "entity": "musicArtist", "limit": 20})
-        for art in genre_artists:
-            name = art.get("artistName")
-            if name and name.lower() != artist_name.lower() and name.lower() not in seen:
-                seen.add(name.lower())
-                similar.append({
-                    "name": name,
-                    "url": f"https://music.apple.com/search?term={urllib.parse.quote(name)}"
+    # Формируем ссылку
+    clean_name = artist_name.replace(" ", "-").lower()
+    see_all_link = f"https://music.apple.com/ru/artist/{clean_name}/{artist_id}/see-all?section=similar-artists"
+
+    recommendations = []
+
+    # Шаг 2: Идем по ссылке и парсим HTML
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+    }
+
+    try:
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(see_all_link, timeout=10) as response:
+                if response.status == 200:
+                    html_text = await response.text()
+                    soup = BeautifulSoup(html_text, "html.parser")
+                    
+                    # Ищем все ссылки на артистов
+                    links = soup.find_all('a', href=re.compile(r'/artist/'))
+                    
+                    for link in links:
+                        name = link.get_text(strip=True)
+                        href = link.get('href')
+                        
+                        if name and href and name.lower() != artist_name.lower():
+                            full_url = href if href.startswith('http') else f"https://music.apple.com{href}"
+                            
+                            if full_url not in [r['url'] for r in recommendations]:
+                                recommendations.append({"name": name, "url": full_url})
+                        
+                        if len(recommendations) >= 10:
+                            break
+    except Exception as e:
+        print(f"Ошибка парсинга: {e}")
+
+    # Шаг 3: Если парсинг не удался, используем API как бэкап
+    if not recommendations:
+        backup = await call_apple({"id": artist_id, "entity": "allArtist", "limit": 11})
+        for item in backup:
+            if item.get("wrapperType") == "artist" and str(item.get("artistId")) != str(artist_id):
+                recommendations.append({
+                    "name": item.get("artistName"),
+                    "url": item.get("artistLinkUrl")
                 })
-                if len(similar) >= 10:
-                    break
-    
-    if not similar:
-        await status_msg.edit_text("❌ Не удалось найти похожих артистов. Попробуйте другого исполнителя.")
+            if len(recommendations) >= 10: break
+
+    # Шаг 4: Вывод
+    if not recommendations:
+        await status_msg.edit_text("❌ Не удалось считать данные со страницы.")
         await state.clear()
         return
+
+    result_text = f"👤 <b>10 похожих артистов для {html.escape(artist_name)}:</b>\n\n"
     
-    result_text = f"👤 <b>Похожие артисты для {html.escape(artist_name)}:</b>\n\n"
-    for i, a in enumerate(similar[:10], 1):
-        result_text += f"{i}. <b>{html.escape(a['name'])}</b>\n🔗 <a href='{a['url']}'>Поиск в Apple Music</a>\n\n"
-    
+    for i, res in enumerate(recommendations[:10], 1):
+        r_name = html.escape(res['name'])
+        r_url = res['url']
+        result_text += f"{i}. <b>{r_name}</b>\n🔗 <a href='{r_url}'>Карточка артиста</a>\n\n"
+
+    result_text += f"🏠 <a href='{see_all_link}'>Открыть весь раздел</a>"
+
     await status_msg.delete()
     
-    back_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎵 Пройти опрос", callback_data="survey")],
-        [InlineKeyboardButton(text="⚡ Быстрый поиск", callback_data="quick_search")],
-        [InlineKeyboardButton(text="💰 Покупки", callback_data="purchases")],
-        [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")]
-    ])
+    # Кнопки возврата
+    back_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎵 Пройти опрос", callback_data="survey")],
+            [InlineKeyboardButton(text="⚡ Быстрый поиск", callback_data="quick_search")],
+            [InlineKeyboardButton(text="💰 Покупки", callback_data="purchases")],
+            [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")]
+        ]
+    )
     
     await message.answer(result_text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=back_kb)
+    
+    # Запросить оценку
     await ask_for_rating(message, user_id, "quick_search")
     await state.clear()
-
+    
 async def top_tracks(message: Message, state: FSMContext):
     """Поиск топ-треков артиста"""
     user_id = message.from_user.id
