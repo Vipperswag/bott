@@ -884,14 +884,31 @@ async def find_similar(message: Message, state: FSMContext):
     }
 
     try:
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(see_all_link, timeout=10) as response:
-                if response.status == 200:
-                    html_text = await response.text()
-                    soup = BeautifulSoup(html_text, "html.parser")
-                    
-                    # Ищем все ссылки на артистов
-                    links = soup.find_all('a', href=re.compile(r'/artist/'))
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.get(see_all_link, timeout=10) as response:
+            print(f"🔍 СТАТУС ОТВЕТА: {response.status}")  # ← сюда добавить
+            
+            if response.status == 200:
+                html_text = await response.text()
+                
+                # ========== ДИАГНОСТИКА ==========
+                print(f"📄 Длина HTML: {len(html_text)} символов")
+                
+                # Сохраняем HTML во временный файл
+                with open("/tmp/debug.html", "w", encoding="utf-8") as f:
+                    f.write(html_text)
+                print("✅ HTML сохранён в /tmp/debug.html")
+                
+                # Проверяем наличие ключевых слов
+                if "similar" in html_text.lower():
+                    print("✅ Найдено слово 'similar' в HTML")
+                else:
+                    print("❌ Слово 'similar' НЕ найдено")
+                # =================================
+                
+                soup = BeautifulSoup(html_text, "html.parser")
+                links = soup.find_all('a', href=re.compile(r'/artist/'))
+                print(f"🔗 Найдено ссылок на артистов: {len(links)}")  # ← и сюда добавить
                     
                     for link in links:
                         name = link.get_text(strip=True)
