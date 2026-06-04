@@ -873,14 +873,23 @@ async def find_similar(message: Message, state: FSMContext):
     
     # Формируем ссылку
     clean_name = artist_name.replace(" ", "-").lower()
-    see_all_link = f"https://music.apple.com/to/artist/{clean_name}/{artist_id}/see-all?section=similar-artists"
+    see_all_link = f"https://music.apple.com/ru/artist/{clean_name}/{artist_id}/see-all?section=similar-artists"
 
     recommendations = []
 
     # Шаг 2: Идем по ссылке и парсим HTML
+        # Шаг 2: Идем по ссылке и парсим HTML
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
-        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1"
     }
 
     try:
