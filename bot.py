@@ -873,7 +873,7 @@ async def find_similar(message: Message, state: FSMContext):
     
     # Формируем ссылку
     clean_name = artist_name.replace(" ", "-").lower()
-    see_all_link = f"https://music.apple.com/ru/artist/{clean_name}/{artist_id}/see-all?section=similar-artists"
+    see_all_link = f"https://music.apple.com/to/artist/{clean_name}/{artist_id}/similar-artists"
 
     recommendations = []
 
